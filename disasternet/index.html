@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DisasterNet — Autonomous Disaster Relief AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- WORLD ID MODAL -->
+<div class="modal-overlay show" id="worldModal">
+  <div class="modal">
+    <h2>🌍 VOLUNTEER IDENTITY VERIFICATION</h2>
+    <p>DisasterNet uses <strong>World ID + NEAR Protocol</strong> to verify each volunteer is a unique human and anchor their relief contributions on-chain for Hypercert minting.</p>
+    <div class="modal-hint">
+      🔒 Your identity is verified on-chain via NEAR. World ID ensures each volunteer is a unique human. No personal data is stored on DisasterNet's servers.
+    </div>
+    <div class="worldid-options">
+      <div class="worldid-option" onclick="verifyWorld('orb')">
+        <div class="worldid-icon">🌍</div>
+        <div class="worldid-info">
+          <div class="worldid-name">World ID — Orb Verified</div>
+          <div class="worldid-desc">Full biometric proof-of-personhood. Highest trust level.</div>
+        </div>
+      </div>
+      <div class="worldid-option" onclick="verifyWorld('device')">
+        <div class="worldid-icon">📱</div>
+        <div class="worldid-info">
+          <div class="worldid-name">World ID — Device Verified</div>
+          <div class="worldid-desc">Device-based verification. Standard trust level.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="skipVerify()">Demo Mode (No Verify)</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <h2>⚡ IMPULSE AI — API KEY</h2>
+    <p>Enter your Anthropic API key to activate the live AI triage agent. Your key stays in your browser session — never sent to any server other than Anthropic's API directly.</p>
+    <div class="modal-hint">
+      🔑 Key stored in sessionStorage only. The Impulse AI agent will use this key to make real-time triage decisions based on field reports. Without a key, the system runs pre-scripted simulation responses.
+    </div>
+    <input class="modal-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeApiModal(false)">Run Simulation</button>
+      <button class="btn btn-primary" onclick="closeApiModal(true)">Activate AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-sym">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="14,2 26,24 2,24" stroke="#ff4500" stroke-width="2" fill="rgba(255,69,0,0.1)"/>
+        <polygon points="14,8 22,22 6,22" stroke="#00d4ff" stroke-width="1" fill="rgba(0,212,255,0.05)"/>
+        <circle cx="14" cy="17" r="2" fill="#00d4ff"/>
+      </svg>
+    </div>
+    <div class="logo-text">Disaster<em>Net</em></div>
+  </div>
+
+  <div class="topbar-pills">
+    <div class="pill pill-alert">
+      <div class="dot dot-red"></div>
+      FLOOD ALERT — MH
+    </div>
+    <div class="pill pill-active">
+      <div class="dot dot-cyan"></div>
+      MESH ACTIVE
+      <div class="mesh-dots" id="meshDots">
+        <div class="mesh-dot me"></div>
+        <div class="mesh-dot" id="md2"></div>
+        <div class="mesh-dot" id="md3"></div>
+        <div class="mesh-dot" id="md4"></div>
+      </div>
+    </div>
+    <div class="pill" id="aiStatusPill">
+      <div class="dot dot-orange"></div>
+      <span id="aiLabel">SIM MODE</span>
+    </div>
+    <div class="pill clickable" onclick="document.getElementById('apiModal').classList.add('show')" title="Configure API Key">
+      ⚙ API
+    </div>
+    <div class="user-pill" id="userPill" onclick="logoutUser()" style="display:none">
+      ✓ <span id="userLabel">VOLUNTEER</span>
+    </div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div class="ticker-scroll">
+    <div class="ticker-inner">
+      ⚠ Zone A2 Palghar: 3.1m flood water, 240 displaced, medical convoy diverted via NH48 — &nbsp;&nbsp;&nbsp;
+      ⚠ Zone B1 Nashik: road collapse on SH10, convoy rerouted, 80 stranded awaiting boats — &nbsp;&nbsp;&nbsp;
+      ⚠ Zone C3 Raigad: hospital overflow, 12 critical patients, oxygen reserves 4hr — &nbsp;&nbsp;&nbsp;
+      ⚡ FHE encryption active on all 847 medical records — Zama TFHE — &nbsp;&nbsp;&nbsp;
+      📦 IPFS sync: 1,203 field records stored — Storacha / Filecoin confirmed — &nbsp;&nbsp;&nbsp;
+      🔗 Starknet contract 0x04a7...f3e2 — ₹2.4Cr verified disbursement queue — &nbsp;&nbsp;&nbsp;
+      🌍 World ID: 34 volunteers verified — NEAR anchor active — &nbsp;&nbsp;&nbsp;
+      ⚠ Zone A2 Palghar: 3.1m flood water, 240 displaced, medical convoy diverted via NH48 — &nbsp;&nbsp;&nbsp;
+      ⚠ Zone B1 Nashik: road collapse on SH10, convoy rerouted, 80 stranded awaiting boats — &nbsp;&nbsp;&nbsp;
+      ⚠ Zone C3 Raigad: hospital overflow, 12 critical patients, oxygen reserves 4hr — &nbsp;&nbsp;&nbsp;
+      ⚡ FHE encryption active on all 847 medical records — Zama TFHE — &nbsp;&nbsp;&nbsp;
+      📦 IPFS sync: 1,203 field records stored — Storacha / Filecoin confirmed
+    </div>
+  </div>
+</div>
+
+<div class="workspace">
+
+  <!-- LEFT: ZONES -->
+  <div class="left">
+    <div class="panel-head">
+      <div class="panel-title">Active Zones</div>
+      <span class="badge badge-red" id="critBadge">3 CRITICAL</span>
+    </div>
+    <div class="zone-list" id="zoneList"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+
+    <!-- STATS ROW -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val red" id="statVictims">605</div>
+        <div class="stat-label">AFFECTED</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val orange" id="statCritical">3</div>
+        <div class="stat-label">CRITICAL ZONES</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="statResources">205</div>
+        <div class="stat-label">UNITS DEPLOYED</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val green" id="statVolunteers">34</div>
+        <div class="stat-label">VERIFIED VOLUNTEERS</div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map">
+      <div class="map-grid"></div>
+      <div class="map-label">MAHARASHTRA DISASTER GRID — <em>LIVE</em> FIELD VIEW</div>
+      <div class="map-legend">
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--red)"></div>CRITICAL</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--orange)"></div>HIGH</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--warn)"></div>MED</div>
+        <div class="map-legend-item"><div class="legend-dot" style="background:var(--green)"></div>LOW</div>
+      </div>
+      <div id="mapContent"></div>
+    </div>
+
+    <!-- AGENT -->
+    <div class="agent">
+      <div class="agent-head">
+        <div class="agent-avatar">⚡</div>
+        <div class="agent-info">
+          <div class="agent-name">IMPULSE AI — TRIAGE AGENT</div>
+          <div class="agent-sub" id="agentSub">AWAITING ACTIVATION</div>
+        </div>
+        <div class="agent-thinking" id="agentThinking">
+          PROCESSING <span class="think-anim"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+      <div class="log" id="agentLog"></div>
+      <div class="input-bar">
+        <input class="field-input" id="reportInput" placeholder="Field report: 'Zone C3 — oxygen tanks empty, 8 critical patients'" />
+        <button class="btn btn-primary" id="dispatchBtn" onclick="submitReport()">DISPATCH</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('missing',this)">MISSING</div>
+      <div class="tab" onclick="switchTab('mesh',this)">MESH</div>
+      <div class="tab" onclick="switchTab('res',this)">RESOURCES</div>
+      <div class="tab" onclick="switchTab('hc',this)">CERTS</div>
+      <div class="tab" onclick="switchTab('funds',this)">FUNDS</div>
+    </div>
+
+    <!-- MISSING PERSONS -->
+    <div class="tab-content active" id="tab-missing">
+      <div class="mp-form">
+        <div class="fhe-banner">
+          <span>🔒</span> FHE ENCRYPTED · ZAMA TFHE · LIT PROTOCOL KEY GATE
+        </div>
+        <input class="mp-input" id="mpName" placeholder="Full name of missing person" />
+        <input class="mp-input" id="mpZone" placeholder="Last seen zone (e.g. A2)" />
+        <input class="mp-input" id="mpNote" placeholder="Age / medical condition / description" />
+        <button class="btn btn-primary" style="width:100%;font-size:10px" onclick="logMissingPerson()">LOG & FHE-ENCRYPT TO MESH</button>
+      </div>
+      <div class="mp-list" id="mpList"></div>
+    </div>
+
+    <!-- MESH -->
+    <div class="tab-content" id="tab-mesh">
+      <div class="mesh-wrap">
+        <div class="mesh-info">
+          📡 <strong>Offline-first mesh</strong> via BroadcastChannel API. Open this page in <strong>another browser tab</strong> to simulate a second rescue worker's device — all field reports, missing persons, and AI decisions sync instantly with zero internet.
+        </div>
+        <div class="mesh-vis">
+          <div class="mesh-node-wrap">
+            <div class="mesh-phone me">📱</div>
+            <div class="mesh-node-label">THIS DEVICE<br><span id="nodeId">NODE-???</span></div>
+          </div>
+          <div class="mesh-arrow active" id="arr1">⟺</div>
+          <div class="mesh-node-wrap">
+            <div class="mesh-phone" id="phone2">📱</div>
+            <div class="mesh-node-label">NODE-02<br><span id="n2s">WAITING</span></div>
+          </div>
+          <div class="mesh-arrow" id="arr2" style="opacity:0.25">⟺</div>
+          <div class="mesh-node-wrap">
+            <div class="mesh-phone" id="phone3">📱</div>
+            <div class="mesh-node-label">NODE-03<br><span id="n3s">OFFLINE</span></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;font-size:10px;margin-bottom:10px" onclick="doBroadcastPing()">📡 BROADCAST MESH PING</button>
+        <div class="mesh-logbox" id="meshLog"></div>
+      </div>
+    </div>
+
+    <!-- RESOURCES -->
+    <div class="tab-content" id="tab-res">
+      <div class="res-list" id="resList"></div>
+    </div>
+
+    <!-- HYPERCERTS -->
+    <div class="tab-content" id="tab-hc">
+      <div class="hc-list" id="hcList"></div>
+    </div>
+
+    <!-- FUNDS / STARKNET -->
+    <div class="tab-content" id="tab-funds">
+      <div class="funds-wrap">
+        <div class="funds-stat">
+          <div class="funds-stat-label">STARKNET CONTRACT</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);margin-bottom:8px;word-break:break-all">0x04a7c3f1...9d8e · Relief Fund v2.1</div>
+          <div class="funds-stat-label">TOTAL VERIFIED FUNDS</div>
+          <div class="funds-stat-val">₹2.4Cr</div>
+          <div class="funds-stat-sub">≈ $288,000 USD · STRK collateral</div>
+        </div>
+        <div class="funds-stat">
+          <div class="funds-stat-label">DISBURSEMENT STATUS</div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <div style="flex:1;text-align:center">
+              <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--accent3)" id="disbursedAmt">₹1.1Cr</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">DISBURSED</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--warn)">₹0.9Cr</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">PENDING</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-family:'Orbitron',monospace;font-size:16px;color:var(--text2)">₹0.4Cr</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)">QUEUED</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-head" style="border:0;padding:4px 0 8px">
+          <div class="panel-title">VERIFIED NGO RECIPIENTS</div>
+        </div>
+        <div class="ngo-list" id="ngoList"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-label">STACK:</div>
+  <span class="tech-tag active">IMPULSE AI</span>
+  <span class="tech-tag purple">ZAMA FHE</span>
+  <span class="tech-tag active">IPFS + FILECOIN</span>
+  <span class="tech-tag active">STORACHA</span>
+  <span class="tech-tag success">NEAR PROTOCOL</span>
+  <span class="tech-tag success">WORLD ID</span>
+  <span class="tech-tag pending">STARKNET</span>
+  <span class="tech-tag success">HYPERCERTS</span>
+  <span class="tech-tag purple">LIT PROTOCOL</span>
+  <span class="tech-tag active">ETH FOUNDATION</span>
+  <span class="tech-tag active">FUNDING THE COMMONS</span>
+  <div class="footer-right" id="footerRight">BROADCASTCHANNEL MESH · OFFLINE-FIRST</div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
