@@ -236,32 +236,6 @@
           </div>
         </div>
         <button class="btn btn-primary" style="width:100%;font-size:10px;margin-bottom:10px" onclick="doBroadcastPing()">📡 BROADCAST MESH PING</button>
-        <div class="sync-panel">
-          <div class="sync-top">
-            <div class="panel-title">SYNC QUEUE</div>
-            <span class="badge badge-orange" id="syncNetwork">OFFLINE</span>
-          </div>
-          <div class="sync-stats">
-            <div class="sync-stat">LEDGER <strong id="ledgerCount">0</strong></div>
-            <div class="sync-stat">QUEUED <strong id="queueCount">0</strong></div>
-            <div class="sync-stat">ANCHOR <strong id="lastAnchor">NONE</strong></div>
-          </div>
-          <div class="sync-actions">
-            <button class="btn btn-primary" style="flex:1;font-size:9px" onclick="exportSyncBundle()">EXPORT BUNDLE</button>
-            <button class="btn btn-primary" style="flex:1;font-size:9px" onclick="uploadSyncBundle()">UPLOAD NOW</button>
-            <button class="btn btn-ghost" style="flex:1;font-size:9px" onclick="markQueueAsSynced()">MARK SYNCED</button>
-            <button class="btn btn-danger" style="font-size:9px" onclick="resetLocalState()">RESET</button>
-          </div>
-          <div class="sync-endpoint-row">
-            <input class="mp-input sync-endpoint" id="syncEndpoint" placeholder="http://localhost:8787/api/v1/sync-bundles" />
-            <button class="btn btn-ghost" style="font-size:9px" onclick="saveSyncEndpoint()">SAVE</button>
-          </div>
-          <div class="sync-endpoint-row">
-            <div class="sync-sign-status" id="syncSignStatus">SIGNING INIT...</div>
-            <button class="btn btn-ghost" style="font-size:9px" onclick="rotateSigningKey()">ROTATE KEY</button>
-          </div>
-          <div class="sync-preview" id="syncPreview">Sync queue empty. New field operations will be queued automatically.</div>
-        </div>
         <div class="mesh-logbox" id="meshLog"></div>
       </div>
     </div>
