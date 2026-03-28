@@ -344,7 +344,7 @@ mono { font-family: 'JetBrains Mono', monospace; }
 .center {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
   border-right: 1px solid var(--border);
 }
 
@@ -479,6 +479,8 @@ mono { font-family: 'JetBrains Mono', monospace; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 280px;
+  flex-shrink: 0;
 }
 
 .agent-head {
@@ -556,6 +558,7 @@ mono { font-family: 'JetBrains Mono', monospace; }
   flex-direction: column;
   gap: 8px;
   background: var(--bg2);
+  min-height: 120px;
 }
 
 .log::-webkit-scrollbar { width: 3px; }
