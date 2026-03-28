@@ -10,6 +10,31 @@ let missingPersons = [];
 let meshLogs = [];
 let hypercerts = [];
 let agentMessages = [];
+let incidentLedger = [];
+let syncQueue = [];
+let lastExportAnchor = 'NONE';
+let syncApiUrl = localStorage.getItem('dnet_sync_api_url') || 'http://localhost:8787/api/v1/sync-bundles';
+let signingIdentity = {
+  ready: false,
+  privateKey: null,
+  publicKey: null,
+  publicKeyPem: '',
+  algorithm: 'Ed25519'
+};
+
+const STORAGE_KEYS = {
+  zones: 'dnet_zones_v1',
+  resources: 'dnet_resources_v1',
+  ngos: 'dnet_ngos_v1',
+  missing: 'dnet_missing_v1',
+  hypercerts: 'dnet_hypercerts_v1',
+  meshLogs: 'dnet_mesh_logs_v1',
+  ledger: 'dnet_ledger_v1',
+  syncQueue: 'dnet_sync_queue_v1',
+  exportAnchor: 'dnet_last_export_anchor_v1',
+  signingPublicSpki: 'dnet_signing_public_spki_b64_v1',
+  signingPrivatePkcs8: 'dnet_signing_private_pkcs8_b64_v1'
+};
 
 const ZONES = [
   { id:'A2', name:'Palghar District',   sev:'critical', lat:26, lng:20, victims:240, resources:12, detail:'Flash flood — 3.1m water level — 240 displaced — medical convoy rerouted' },
@@ -37,6 +62,10 @@ const NGOS = [
   { name:'Pratham Relief',     amount:'₹18L',  zone:'F2, G1', status:'pending',  color:'var(--warn)' },
 ];
 
+const INITIAL_ZONES = JSON.parse(JSON.stringify(ZONES));
+const INITIAL_RESOURCES = JSON.parse(JSON.stringify(RESOURCES));
+const INITIAL_NGOS = JSON.parse(JSON.stringify(NGOS));
+
 const SYSTEM_PROMPT = `You are Impulse AI, an autonomous disaster relief triage agent deployed in Maharashtra, India during a major flood emergency. You coordinate rescue workers on an offline mesh network.
 
 Active zones:
@@ -56,17 +85,584 @@ Be concise, operational, direct. Use zone codes. Max 4-5 sentences. Lead with �
 // ==============================================================
 window.addEventListener('load', () => {
   document.getElementById('nodeId').textContent = NODE_ID;
+  loadPersistentState();
   renderZones();
   renderMap();
   renderResources();
   renderNGOs();
+  renderMissingPersons();
   initHypercerts();
   initMesh();
+  wireConnectivity();
+  renderSyncStatus();
   simulateMeshActivity();
+  ensureSigningIdentity().catch(() => {
+    updateSigningStatus('UNAVAILABLE');
+  });
 
   const saved = sessionStorage.getItem('dnet_key');
   if (saved) { apiKey = saved; simMode = false; updateAIStatus(); }
 });
+
+// ==============================================================
+// PERSISTENCE + LEDGER
+// ==============================================================
+function readStoredJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function replaceArray(target, source) {
+  target.splice(0, target.length, ...source);
+}
+
+function loadPersistentState() {
+  const storedZones = readStoredJSON(STORAGE_KEYS.zones, null);
+  const storedResources = readStoredJSON(STORAGE_KEYS.resources, null);
+  const storedNgos = readStoredJSON(STORAGE_KEYS.ngos, null);
+
+  replaceArray(ZONES, Array.isArray(storedZones) ? storedZones : INITIAL_ZONES);
+  replaceArray(RESOURCES, Array.isArray(storedResources) ? storedResources : INITIAL_RESOURCES);
+  replaceArray(NGOS, Array.isArray(storedNgos) ? storedNgos : INITIAL_NGOS);
+
+  missingPersons = readStoredJSON(STORAGE_KEYS.missing, []);
+  hypercerts = readStoredJSON(STORAGE_KEYS.hypercerts, []);
+  meshLogs = readStoredJSON(STORAGE_KEYS.meshLogs, []);
+  incidentLedger = readStoredJSON(STORAGE_KEYS.ledger, []);
+  syncQueue = readStoredJSON(STORAGE_KEYS.syncQueue, []);
+  lastExportAnchor = localStorage.getItem(STORAGE_KEYS.exportAnchor) || 'NONE';
+}
+
+function persistState() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.zones, JSON.stringify(ZONES));
+    localStorage.setItem(STORAGE_KEYS.resources, JSON.stringify(RESOURCES));
+    localStorage.setItem(STORAGE_KEYS.ngos, JSON.stringify(NGOS));
+    localStorage.setItem(STORAGE_KEYS.missing, JSON.stringify(missingPersons));
+    localStorage.setItem(STORAGE_KEYS.hypercerts, JSON.stringify(hypercerts));
+    localStorage.setItem(STORAGE_KEYS.meshLogs, JSON.stringify(meshLogs.slice(0, 60)));
+    localStorage.setItem(STORAGE_KEYS.ledger, JSON.stringify(incidentLedger.slice(0, 300)));
+    localStorage.setItem(STORAGE_KEYS.syncQueue, JSON.stringify(syncQueue));
+    localStorage.setItem(STORAGE_KEYS.exportAnchor, lastExportAnchor);
+  } catch {
+    // If storage quota is exceeded, continue without blocking field operations.
+  }
+}
+
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+}
+
+function getBundleSigningPayload(bundle) {
+  const signingMaterial = {
+    schema: bundle.schema,
+    nodeId: bundle.nodeId,
+    generatedAt: bundle.generatedAt,
+    previousAnchor: bundle.previousAnchor,
+    headHash: bundle.headHash,
+    eventCount: bundle.eventCount,
+    eventHashes: Array.isArray(bundle.events) ? bundle.events.map(e => e.hash) : []
+  };
+  return stableStringify(signingMaterial);
+}
+
+function abToBase64(ab) {
+  const bytes = new Uint8Array(ab);
+  let str = '';
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str);
+}
+
+function base64ToAb(b64) {
+  const str = atob(b64);
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function spkiBase64ToPem(spkiB64) {
+  const lines = spkiB64.match(/.{1,64}/g) || [];
+  return `-----BEGIN PUBLIC KEY-----\n${lines.join('\n')}\n-----END PUBLIC KEY-----`;
+}
+
+function updateSigningStatus(label) {
+  const el = document.getElementById('syncSignStatus');
+  if (!el) return;
+  el.textContent = `SIGNING ${label}`;
+}
+
+async function generateSigningIdentity() {
+  if (!window.crypto?.subtle) {
+    throw new Error('WebCrypto unavailable in this browser context');
+  }
+
+  const pair = await window.crypto.subtle.generateKey(
+    { name: 'Ed25519' },
+    true,
+    ['sign', 'verify']
+  );
+
+  const spki = await window.crypto.subtle.exportKey('spki', pair.publicKey);
+  const pkcs8 = await window.crypto.subtle.exportKey('pkcs8', pair.privateKey);
+  const spkiB64 = abToBase64(spki);
+  const pkcs8B64 = abToBase64(pkcs8);
+
+  localStorage.setItem(STORAGE_KEYS.signingPublicSpki, spkiB64);
+  localStorage.setItem(STORAGE_KEYS.signingPrivatePkcs8, pkcs8B64);
+
+  signingIdentity = {
+    ready: true,
+    privateKey: pair.privateKey,
+    publicKey: pair.publicKey,
+    publicKeyPem: spkiBase64ToPem(spkiB64),
+    algorithm: 'Ed25519'
+  };
+}
+
+async function loadSigningIdentity() {
+  const spkiB64 = localStorage.getItem(STORAGE_KEYS.signingPublicSpki);
+  const pkcs8B64 = localStorage.getItem(STORAGE_KEYS.signingPrivatePkcs8);
+  if (!spkiB64 || !pkcs8B64) return false;
+
+  if (!window.crypto?.subtle) return false;
+
+  try {
+    const publicKey = await window.crypto.subtle.importKey(
+      'spki',
+      base64ToAb(spkiB64),
+      { name: 'Ed25519' },
+      true,
+      ['verify']
+    );
+    const privateKey = await window.crypto.subtle.importKey(
+      'pkcs8',
+      base64ToAb(pkcs8B64),
+      { name: 'Ed25519' },
+      true,
+      ['sign']
+    );
+
+    signingIdentity = {
+      ready: true,
+      privateKey,
+      publicKey,
+      publicKeyPem: spkiBase64ToPem(spkiB64),
+      algorithm: 'Ed25519'
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureSigningIdentity() {
+  updateSigningStatus('INIT...');
+  const loaded = await loadSigningIdentity();
+  if (!loaded) {
+    await generateSigningIdentity();
+    addMeshLog('🔐 Generated local signing keypair for this node');
+  }
+  updateSigningStatus('READY');
+  return signingIdentity;
+}
+
+async function rotateSigningKey() {
+  localStorage.removeItem(STORAGE_KEYS.signingPublicSpki);
+  localStorage.removeItem(STORAGE_KEYS.signingPrivatePkcs8);
+  signingIdentity = { ready: false, privateKey: null, publicKey: null, publicKeyPem: '', algorithm: 'Ed25519' };
+  try {
+    await ensureSigningIdentity();
+    showToast('Signing key rotated');
+  } catch (e) {
+    showToast(`Key rotation failed: ${e.message}`);
+  }
+}
+
+function getSyncBaseUrl() {
+  if (!syncApiUrl) return '';
+  return syncApiUrl.replace(/\/api\/v1\/sync-bundles\/?$/, '');
+}
+
+async function registerSignerWithBackend() {
+  const base = getSyncBaseUrl();
+  if (!base) throw new Error('Invalid sync endpoint');
+
+  const nearId = currentUser?.id || `${NODE_ID.toLowerCase()}.near`;
+  const worldLevel = currentUser?.trust || 'DEMO';
+
+  const res = await fetch(`${base}/api/v1/volunteers/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nodeId: NODE_ID,
+      nearId,
+      worldLevel,
+      publicKeyPem: signingIdentity.publicKeyPem
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    throw new Error(data.message || 'Volunteer registration failed');
+  }
+
+  return { nearId, worldLevel };
+}
+
+async function signBundle(bundle) {
+  const payload = getBundleSigningPayload(bundle);
+  const bytes = new TextEncoder().encode(payload);
+  const signatureAb = await window.crypto.subtle.sign({ name: 'Ed25519' }, signingIdentity.privateKey, bytes);
+  return abToBase64(signatureAb);
+}
+
+function hashString(input) {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function createLedgerEvent(type, payload, enqueue = true, rebroadcast = true) {
+  const prevHash = incidentLedger[0]?.hash || 'GENESIS';
+  const ts = new Date().toISOString();
+  const id = `EVT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const hashBase = `${prevHash}|${type}|${stableStringify(payload)}|${ts}|${NODE_ID}`;
+  const event = {
+    id,
+    type,
+    payload,
+    ts,
+    node: NODE_ID,
+    prevHash,
+    hash: hashString(hashBase),
+    status: enqueue ? 'queued' : 'local'
+  };
+
+  incidentLedger.unshift(event);
+  if (enqueue) syncQueue.unshift(event.id);
+
+  if (rebroadcast) {
+    broadcastToMesh({ type: 'ledger_event', event });
+  }
+
+  persistState();
+  renderSyncStatus();
+  return event;
+}
+
+function ingestMeshLedgerEvent(event) {
+  if (!event?.id) return;
+  if (incidentLedger.some(e => e.id === event.id)) return;
+
+  incidentLedger.unshift({ ...event, status: 'mesh-synced' });
+  persistState();
+  renderSyncStatus();
+  addMeshLog(`🧾 Ledger event synced: ${event.type} · ${event.id}`);
+}
+
+function getQueuedEvents() {
+  const queuedIds = new Set(syncQueue);
+  return incidentLedger.filter(e => queuedIds.has(e.id));
+}
+
+function renderSyncStatus() {
+  const ledgerCount = document.getElementById('ledgerCount');
+  const queueCount = document.getElementById('queueCount');
+  const anchor = document.getElementById('lastAnchor');
+  const preview = document.getElementById('syncPreview');
+  const endpoint = document.getElementById('syncEndpoint');
+
+  if (!ledgerCount || !queueCount || !anchor || !preview || !endpoint) return;
+
+  const queued = getQueuedEvents();
+  ledgerCount.textContent = String(incidentLedger.length);
+  queueCount.textContent = String(queued.length);
+  anchor.textContent = lastExportAnchor === 'NONE' ? 'NONE' : lastExportAnchor.slice(0, 8).toUpperCase();
+  endpoint.value = syncApiUrl;
+
+  if (!queued.length) {
+    preview.textContent = 'Sync queue empty. New field operations will be queued automatically.';
+    return;
+  }
+
+  preview.innerHTML = queued.slice(0, 5).map(e => {
+    const summary = e.type.replaceAll('_', ' ').toUpperCase();
+    const hash = e.hash.toUpperCase().slice(0, 8);
+    return `<div class="mesh-line"><span class="ts">${new Date(e.ts).toLocaleTimeString()}</span>${summary} · HASH ${hash}</div>`;
+  }).join('');
+}
+
+function exportSyncBundle() {
+  const queued = getQueuedEvents();
+  if (!queued.length) {
+    showToast('No queued records to export');
+    return;
+  }
+
+  const headHash = incidentLedger[0]?.hash || 'GENESIS';
+  const bundle = {
+    schema: 'disasternet.sync.bundle.v1',
+    generatedAt: new Date().toISOString(),
+    nodeId: NODE_ID,
+    previousAnchor: lastExportAnchor,
+    headHash,
+    eventCount: queued.length,
+    events: queued
+  };
+
+  const filename = `disasternet-sync-${Date.now()}.json`;
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  const queuedSet = new Set(syncQueue);
+  incidentLedger.forEach(e => {
+    if (queuedSet.has(e.id)) e.status = 'exported';
+  });
+  syncQueue = [];
+  lastExportAnchor = headHash;
+
+  createLedgerEvent('sync_bundle_exported', { filename, eventCount: bundle.eventCount, headHash }, false);
+  persistState();
+  renderSyncStatus();
+  showToast(`📦 Exported sync bundle (${bundle.eventCount} events)`);
+}
+
+function saveSyncEndpoint() {
+  const input = document.getElementById('syncEndpoint');
+  const next = input ? input.value.trim() : '';
+  if (!next) {
+    showToast('Sync endpoint cannot be empty');
+    return;
+  }
+
+  syncApiUrl = next;
+  localStorage.setItem('dnet_sync_api_url', syncApiUrl);
+  showToast('Sync endpoint saved');
+}
+
+async function uploadSyncBundle() {
+  if (!navigator.onLine) {
+    showToast('Device offline. Export bundle for delayed sync.');
+    return;
+  }
+
+  const queued = getQueuedEvents();
+  if (!queued.length) {
+    showToast('No queued records to upload');
+    return;
+  }
+
+  const bundle = {
+    schema: 'disasternet.sync.bundle.v1',
+    generatedAt: new Date().toISOString(),
+    nodeId: NODE_ID,
+    previousAnchor: lastExportAnchor,
+    headHash: incidentLedger[0]?.hash || 'GENESIS',
+    eventCount: queued.length,
+    events: queued
+  };
+
+  try {
+    await ensureSigningIdentity();
+    const signer = await registerSignerWithBackend();
+    bundle.signer = signer;
+    bundle.signature = await signBundle(bundle);
+
+    const res = await fetch(syncApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bundle)
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || 'Sync upload failed');
+    }
+
+    const queuedSet = new Set(syncQueue);
+    incidentLedger.forEach(e => {
+      if (queuedSet.has(e.id)) e.status = 'synced';
+    });
+    syncQueue = [];
+    lastExportAnchor = bundle.headHash;
+    createLedgerEvent('sync_bundle_uploaded', {
+      bundleId: data.bundleId,
+      endpoint: syncApiUrl,
+      eventCount: bundle.eventCount,
+      headHash: bundle.headHash
+    }, false);
+    persistState();
+    renderSyncStatus();
+    showToast(`✓ Uploaded ${bundle.eventCount} events`);
+  } catch (e) {
+    showToast(`Upload failed: ${e.message}`);
+  }
+}
+
+function markQueueAsSynced() {
+  if (!syncQueue.length) {
+    showToast('Queue already empty');
+    return;
+  }
+
+  const queuedSet = new Set(syncQueue);
+  incidentLedger.forEach(e => {
+    if (queuedSet.has(e.id)) e.status = 'synced';
+  });
+  syncQueue = [];
+  persistState();
+  renderSyncStatus();
+  showToast('✓ Queue marked as synced');
+}
+
+function resetLocalState() {
+  if (!confirm('Reset local zone state, ledger, queue, and cached records on this device?')) return;
+
+  replaceArray(ZONES, JSON.parse(JSON.stringify(INITIAL_ZONES)));
+  replaceArray(RESOURCES, JSON.parse(JSON.stringify(INITIAL_RESOURCES)));
+  replaceArray(NGOS, JSON.parse(JSON.stringify(INITIAL_NGOS)));
+  missingPersons = [];
+  hypercerts = [];
+  meshLogs = [];
+  incidentLedger = [];
+  syncQueue = [];
+  lastExportAnchor = 'NONE';
+
+  renderZones();
+  renderResources();
+  renderNGOs();
+  renderMissingPersons();
+  initHypercerts();
+  renderMeshLog();
+  renderSyncStatus();
+  persistState();
+  showToast('Local state reset complete');
+}
+
+function wireConnectivity() {
+  window.addEventListener('online', updateConnectivityStatus);
+  window.addEventListener('offline', updateConnectivityStatus);
+  updateConnectivityStatus();
+}
+
+function updateConnectivityStatus() {
+  const el = document.getElementById('syncNetwork');
+  const footer = document.getElementById('footerRight');
+  if (!el || !footer) return;
+
+  if (navigator.onLine) {
+    el.textContent = 'ONLINE';
+    el.className = 'badge badge-green';
+    footer.textContent = 'CONNECTIVITY AVAILABLE · READY TO EXPORT';
+  } else {
+    el.textContent = 'OFFLINE';
+    el.className = 'badge badge-orange';
+    footer.textContent = 'BROADCASTCHANNEL MESH · OFFLINE-FIRST';
+  }
+}
+
+// ==============================================================
+// DETERMINISTIC TRIAGE ENGINE
+// ==============================================================
+function extractZoneCode(text) {
+  const m = text.match(/zone\s+([a-z]\d)/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+function getZoneByCode(zoneCode) {
+  return ZONES.find(z => z.id.toUpperCase() === String(zoneCode || '').toUpperCase()) || ZONES[0];
+}
+
+function bumpResource(name, delta) {
+  const r = RESOURCES.find(x => x.name === name);
+  if (!r) return;
+  r.deployed = Math.max(0, Math.min(r.total, r.deployed + delta));
+}
+
+function buildTriagePlan(report) {
+  const lc = report.toLowerCase();
+  const zone = getZoneByCode(extractZoneCode(report));
+  const sevBase = { critical: 52, high: 36, medium: 22, low: 10 };
+
+  let score = sevBase[zone.sev] + Math.min(24, Math.round(zone.victims / 10));
+  if (/critical|urgent|collapse|trapped/.test(lc)) score += 15;
+  if (/oxygen|hospital|medical|critical patients/.test(lc)) score += 14;
+  if (/flood|water|boat|drown/.test(lc)) score += 12;
+  if (/road|bridge|route|block|landslide/.test(lc)) score += 10;
+  if (/food|supply|medicine/.test(lc)) score += 7;
+  score = Math.max(1, Math.min(score, 99));
+
+  const actions = [];
+  if (/oxygen|hospital|medical|critical/.test(lc)) {
+    actions.push('Deploy +1 Medical Team from nearest reserve');
+    actions.push('Deploy +2 Field Medics to stabilize critical victims');
+    bumpResource('Medical Teams', 1);
+    bumpResource('Field Medics', 2);
+    bumpResource('Ambulances', 1);
+  }
+  if (/flood|water|boat|stranded/.test(lc)) {
+    actions.push('Deploy +2 Rescue Boats for evacuation corridor');
+    bumpResource('Rescue Boats', 2);
+  }
+  if (/road|bridge|route|block|landslide/.test(lc)) {
+    actions.push('Reroute 1 Supply Convoy through alternate route');
+    bumpResource('Supply Convoys', 1);
+  }
+  if (/food|supply|medicine/.test(lc)) {
+    actions.push('Dispatch medical and ration package bundle');
+    bumpResource('Supply Convoys', 1);
+  }
+
+  if (!actions.length) {
+    actions.push('Dispatch nearest available response team');
+    bumpResource('Field Medics', 1);
+  }
+
+  zone.resources = Math.max(0, zone.resources - Math.min(actions.length, 3));
+
+  const severity = score >= 80 ? 'CRITICAL' : score >= 55 ? 'HIGH' : score >= 30 ? 'MEDIUM' : 'LOW';
+  const etaMin = Math.max(8, 35 - Math.floor(score / 4));
+  const needsFHE = /hospital|medical|critical|patient|diagnostic/.test(lc);
+  const shouldMintHypercert = score >= 55;
+
+  renderResources();
+  renderZones();
+
+  return {
+    zoneId: zone.id,
+    zoneName: zone.name,
+    score,
+    severity,
+    etaMin,
+    actions,
+    needsFHE,
+    shouldMintHypercert
+  };
+}
+
+function renderTriageSummary(plan) {
+  const actionLine = plan.actions.slice(0, 2).join(' | ');
+  const fheLine = plan.needsFHE ? 'FHE medical data path required.' : 'No medical data unlock needed.';
+  return `📐 TRIAGE SCORE ${plan.score} (${plan.severity}) · Zone ${plan.zoneId}. ${actionLine}. ETA ${plan.etaMin} min. ${fheLine}`;
+}
 
 // ==============================================================
 // WORLD ID / LOGIN
@@ -241,25 +837,46 @@ async function submitReport() {
   const txt = document.getElementById('reportInput').value.trim();
   if (!txt) return;
   addLog('alert', `📍 Field report received: <strong>${txt}</strong>`);
+  const triagePlan = buildTriagePlan(txt);
+  addLog('system', renderTriageSummary(triagePlan));
+  createLedgerEvent('field_report_logged', {
+    reporter: currentUser?.id || 'unverified',
+    text: txt,
+    zone: triagePlan.zoneId,
+    score: triagePlan.score,
+    severity: triagePlan.severity,
+    actions: triagePlan.actions,
+    needsFHE: triagePlan.needsFHE
+  });
+
   document.getElementById('reportInput').value = '';
   setThinking(true);
   document.getElementById('agentSub').textContent = 'PROCESSING FIELD DATA...';
   broadcastToMesh({ type:'field_report', text: txt });
 
+  let decisionText;
   if (simMode || !apiKey) {
-    await simulatedDecision(txt);
+    decisionText = await simulatedDecision(txt);
   } else {
-    await callClaude(txt);
+    decisionText = await callClaude(txt);
   }
 
   setThinking(false);
   document.getElementById('agentSub').textContent = 'MONITORING — READY';
+  createLedgerEvent('triage_decision_issued', {
+    zone: triagePlan.zoneId,
+    score: triagePlan.score,
+    decision: decisionText,
+    etaMin: triagePlan.etaMin
+  });
 
   // Maybe mint a hypercert for this action
-  if (currentUser && Math.random() > 0.5) {
+  if (currentUser && (triagePlan.shouldMintHypercert || Math.random() > 0.5)) {
     const zone = txt.match(/Zone\s+(\w+)/i)?.[1] || 'FIELD';
     addHypercert({ name: currentUser.id, action: txt.substring(0,60)+'...', zone, trust: currentUser.trust });
   }
+
+  persistState();
 }
 
 async function callClaude(report) {
@@ -281,18 +898,21 @@ async function callClaude(report) {
     });
     const data = await res.json();
     if (data.content?.[0]) {
-      addLog('decision', data.content[0].text);
-      updateResourcesRandom();
+      const text = data.content[0].text;
+      addLog('decision', text);
+      return text;
     } else if (data.error) {
       addLog('system', `⚠ API error: ${data.error.message}. Falling back to simulation.`);
       simMode = true; updateAIStatus();
-      await simulatedDecision(report);
+      return await simulatedDecision(report);
     }
   } catch (e) {
     addLog('system', `⚠ Connection error: ${e.message}. Check API key. Falling back to simulation.`);
     simMode = true; updateAIStatus();
-    await simulatedDecision(report);
+    return await simulatedDecision(report);
   }
+
+  return 'No decision returned from model';
 }
 
 async function simulatedDecision(txt) {
@@ -313,7 +933,7 @@ async function simulatedDecision(txt) {
   }
 
   addLog('decision', resp);
-  updateResourcesRandom();
+  return resp;
 }
 
 async function runInitialAssessment() {
@@ -322,9 +942,12 @@ async function runInitialAssessment() {
   const report = `Initial situation report: Maharashtra flood emergency. Zone A2 Palghar CRITICAL 240 victims, Zone B1 Nashik CRITICAL 80 stranded, Zone C3 Raigad hospital CRITICAL oxygen shortage, Zone D1 Thane HIGH 130 victims, Zone E4 Pune HIGH 60 victims, Zone F2 Solapur MEDIUM, Zone G1 Kolhapur LOW. Provide priority assessment and immediate resource routing.`;
   if (simMode || !apiKey) {
     await new Promise(r => setTimeout(r, 1800));
-    addLog('info', `🔍 INITIAL SCAN COMPLETE: 7 zones active. Priority order: C3 (oxygen critical, 4hr window) → A2 (mass displacement, 240 victims) → B1 (route blocked, convoy stalled). Routing: Helicopter 2 → C3 immediately. Convoy 1 rerouted via NH48 → A2. Zone G1 and F2 resources freed for reallocation. All decisions broadcast to mesh. FHE sync active. Standing by for field updates.`);
+    const msg = `🔍 INITIAL SCAN COMPLETE: 7 zones active. Priority order: C3 (oxygen critical, 4hr window) → A2 (mass displacement, 240 victims) → B1 (route blocked, convoy stalled). Routing: Helicopter 2 → C3 immediately. Convoy 1 rerouted via NH48 → A2. Zone G1 and F2 resources freed for reallocation. All decisions broadcast to mesh. FHE sync active. Standing by for field updates.`;
+    addLog('info', msg);
+    createLedgerEvent('initial_assessment', { summary: msg }, false);
   } else {
-    await callClaude(report);
+    const msg = await callClaude(report);
+    createLedgerEvent('initial_assessment', { summary: msg }, false);
   }
   setThinking(false);
   document.getElementById('agentSub').textContent = 'MONITORING — READY';
@@ -368,7 +991,7 @@ function logMissingPerson() {
 
   const cipher = randHex(40);
   const cid = 'Qm' + Array.from({length:22},()=>Math.floor(Math.random()*36).toString(36)).join('').toUpperCase();
-  const rec = { name, zone, note, time: new Date().toLocaleTimeString(), cipher, cid };
+  const rec = { id: `MP-${Date.now().toString(36).toUpperCase()}`, name, zone, note, time: new Date().toLocaleTimeString(), cipher, cid };
 
   missingPersons.unshift(rec);
   renderMissingPersons();
@@ -378,6 +1001,15 @@ function logMissingPerson() {
 
   broadcastToMesh({ type:'missing_person', record: rec });
   addMeshLog(`📋 Missing person FHE-encrypted & broadcast: ${name}`);
+  createLedgerEvent('missing_person_logged', {
+    id: rec.id,
+    name,
+    zone,
+    note,
+    cipherHead: cipher.slice(0, 10),
+    cid
+  });
+  persistState();
   showToast(`🔒 ${name} logged & encrypted to mesh`);
 }
 
@@ -395,18 +1027,26 @@ function renderMissingPersons() {
 // HYPERCERTS
 // ==============================================================
 function initHypercerts() {
+  if (hypercerts.length) {
+    renderHypercerts();
+    return;
+  }
+
   const seeds = [
     { name:'priya_v.near',  action:'Deployed rescue boats to Zone A2 Palghar',        zone:'A2', trust:'ORB-VERIFIED' },
     { name:'arjun_r.near',  action:'Coordinated medical supply delivery to Zone C3',   zone:'C3', trust:'ORB-VERIFIED' },
     { name:'meera_s.near',  action:'Organized 45-person evacuation in Zone D1 Thane',  zone:'D1', trust:'DEV-VERIFIED' },
   ];
   seeds.forEach(s => addHypercert(s, true));
+  persistState();
 }
 
 function addHypercert({ name, action, zone, trust }, silent=false) {
   const id = 'HC-' + Date.now().toString(36).toUpperCase().slice(-6);
   hypercerts.unshift({ id, name, action, zone, trust, minted: false, time: new Date().toLocaleTimeString() });
   renderHypercerts();
+  createLedgerEvent('hypercert_queued', { id, name, zone, trust, action }, false);
+  persistState();
   if (!silent) showToast(`🏅 Hypercert queued: ${name}`);
 }
 
@@ -430,6 +1070,8 @@ function mintHC(i) {
   renderHypercerts();
   showToast(`✓ Hypercert ${hypercerts[i].id} minted on-chain for ${hypercerts[i].name}`);
   addMeshLog(`🏅 Hypercert minted: ${hypercerts[i].id} — ${hypercerts[i].name}`);
+  createLedgerEvent('hypercert_minted', { id: hypercerts[i].id, name: hypercerts[i].name, zone: hypercerts[i].zone });
+  persistState();
 }
 
 // ==============================================================
@@ -454,6 +1096,8 @@ function disburse(i) {
   document.getElementById('dgbtn'+i).classList.add('done');
   showToast(`✓ ${NGOS[i].amount} disbursed to ${NGOS[i].name} via Starknet`);
   addMeshLog(`💸 Starknet: ${NGOS[i].amount} disbursed to ${NGOS[i].name}`);
+  createLedgerEvent('ngo_disbursement', { ngo: NGOS[i].name, amount: NGOS[i].amount, zone: NGOS[i].zone });
+  persistState();
 }
 
 // ==============================================================
@@ -478,15 +1122,21 @@ function initMesh() {
     }
     if (msg.type === 'missing_person') {
       const r = msg.record;
-      missingPersons.unshift({...r, name: r.name + ' [SYNCED]'});
-      renderMissingPersons();
-      addMeshLog(`👤 Missing person synced: ${r.name}`);
+      if (!missingPersons.some(p => p.id === r.id)) {
+        missingPersons.unshift({ ...r, name: r.name + ' [SYNCED]' });
+        renderMissingPersons();
+        addMeshLog(`👤 Missing person synced: ${r.name}`);
+        persistState();
+      }
     }
     if (msg.type === 'agent_msg') {
       addMeshLog(`⚡ AI decision synced from ${msg.from}`);
     }
     if (msg.type === 'field_report') {
       addMeshLog(`📍 Field report from ${msg.from}: "${msg.text.substring(0,45)}..."`);
+    }
+    if (msg.type === 'ledger_event') {
+      ingestMeshLedgerEvent(msg.event);
     }
   };
 
@@ -507,6 +1157,7 @@ function addMeshLog(txt) {
   meshLogs.unshift({ txt, ts: new Date().toLocaleTimeString() });
   if (meshLogs.length > 40) meshLogs.pop();
   renderMeshLog();
+  persistState();
 }
 
 function renderMeshLog() {
