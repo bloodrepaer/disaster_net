@@ -1,0 +1,16 @@
+[
+  {
+    "id": "ANC-MNAMH71T-D649",
+    "bundleId": "BND-MNAMH71Q-27CD",
+    "nodeId": "NODE-ANCHOR",
+    "headHash": "1574c422",
+    "previousAnchor": "NONE",
+    "targetChain": "starknet",
+    "contractRef": "ReliefFund.v1",
+    "status": "anchored",
+    "txHash": "0xabc123deadbeef",
+    "error": null,
+    "createdAt": "2026-03-28T17:46:59.441Z",
+    "updatedAt": "2026-03-28T17:47:14.601Z"
+  }
+]

@@ -1,0 +1,261 @@
+[
+  {
+    "id": "BND-MNAMH71Q-27CD",
+    "receivedAt": "2026-03-28T17:46:59.438Z",
+    "nodeId": "NODE-ANCHOR",
+    "headHash": "1574c422",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T17:46:59.409Z",
+    "signature": null,
+    "signer": null,
+    "publish": {
+      "provider": "local-publisher",
+      "mode": "deterministic-mock",
+      "cid": "bafy84328efd792cb98f2c9dcb6e676d8e9f6d3cfc342b5b",
+      "pinned": false,
+      "recordedAt": "2026-03-28T17:46:59.440Z"
+    },
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T17:46:59.409Z",
+      "nodeId": "NODE-ANCHOR",
+      "previousAnchor": "NONE",
+      "headHash": "1574c422",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-ANCH-1774720019409",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone A2 test anchor",
+            "zone": "A2"
+          },
+          "ts": "2026-03-28T17:46:59.408Z",
+          "node": "NODE-ANCHOR",
+          "prevHash": "GENESIS",
+          "hash": "1574c422",
+          "status": "queued"
+        }
+      ]
+    }
+  },
+  {
+    "id": "BND-MNAFHOVD-8FB9",
+    "receivedAt": "2026-03-28T14:31:25.225Z",
+    "nodeId": "NODE-FRONTEND-COMPAT",
+    "headHash": "b5f209ed",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T14:31:25.210Z",
+    "signature": "KfT5saCGmtsYdZaOpuwlJYPrJRUGm+/T34Fl9MJiTVTQ5D+jTHvAytcYRLmyKpN175HDpxQMrVJPkZ+tXlVMCQ==",
+    "signer": {
+      "nearId": "frontend_compat.near",
+      "worldLevel": "DEV-VERIFIED"
+    },
+    "publish": {
+      "provider": "local-publisher",
+      "mode": "deterministic-mock",
+      "cid": "bafy5a203df1c829722c7143ba4a8983a74cb7a2139c4086",
+      "pinned": false,
+      "recordedAt": "2026-03-28T14:31:25.227Z"
+    },
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T14:31:25.210Z",
+      "nodeId": "NODE-FRONTEND-COMPAT",
+      "previousAnchor": "NONE",
+      "headHash": "b5f209ed",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-FR-COMPAT-1",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone E4 flood escalation",
+            "zone": "E4"
+          },
+          "ts": "2026-03-28T14:31:25.209Z",
+          "node": "NODE-FRONTEND-COMPAT",
+          "prevHash": "GENESIS",
+          "hash": "b5f209ed",
+          "status": "queued"
+        }
+      ],
+      "signer": {
+        "nearId": "frontend_compat.near",
+        "worldLevel": "DEV-VERIFIED"
+      },
+      "signature": "KfT5saCGmtsYdZaOpuwlJYPrJRUGm+/T34Fl9MJiTVTQ5D+jTHvAytcYRLmyKpN175HDpxQMrVJPkZ+tXlVMCQ=="
+    }
+  },
+  {
+    "id": "BND-MNACUC0W-15B6",
+    "receivedAt": "2026-03-28T13:17:16.256Z",
+    "nodeId": "NODE-SIGNED",
+    "headHash": "51eb91bd",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T13:17:16.241Z",
+    "signature": "+05gkdtnqsaEcha70kd5A89WSGZtdy6cqX1q/1ykUC/qrWHePYt5+WilAVtAtXr2JU/6k1Wc5WXUvlWTzrhEDw==",
+    "signer": {
+      "nearId": "rescue_signed.near",
+      "worldLevel": "ORB-VERIFIED"
+    },
+    "publish": {
+      "provider": "local-publisher",
+      "mode": "deterministic-mock",
+      "cid": "bafyc084a3c854fd9b4e9464784d1ed38586ec39143e2408",
+      "pinned": false,
+      "recordedAt": "2026-03-28T13:17:16.256Z"
+    },
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T13:17:16.241Z",
+      "nodeId": "NODE-SIGNED",
+      "previousAnchor": "NONE",
+      "headHash": "51eb91bd",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-SIGNED-1",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone D1 triage action",
+            "zone": "D1"
+          },
+          "ts": "2026-03-28T13:17:16.240Z",
+          "node": "NODE-SIGNED",
+          "prevHash": "GENESIS",
+          "hash": "51eb91bd",
+          "status": "queued"
+        }
+      ],
+      "signer": {
+        "nearId": "rescue_signed.near",
+        "worldLevel": "ORB-VERIFIED"
+      },
+      "signature": "+05gkdtnqsaEcha70kd5A89WSGZtdy6cqX1q/1ykUC/qrWHePYt5+WilAVtAtXr2JU/6k1Wc5WXUvlWTzrhEDw=="
+    }
+  },
+  {
+    "id": "BND-MNACRUGT-36BC",
+    "receivedAt": "2026-03-28T13:15:20.189Z",
+    "nodeId": "NODE-B",
+    "headHash": "73b5a0f2",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T13:15:20.158Z",
+    "signature": null,
+    "signer": null,
+    "publish": {
+      "provider": "local-publisher",
+      "mode": "deterministic-mock",
+      "cid": "bafyf3251997fa84859546e364d10f4f2145a173e85a16be",
+      "pinned": false,
+      "recordedAt": "2026-03-28T13:15:20.189Z"
+    },
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T13:15:20.158Z",
+      "nodeId": "NODE-B",
+      "previousAnchor": "NONE",
+      "headHash": "73b5a0f2",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-B1",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone B1 road block",
+            "zone": "B1"
+          },
+          "ts": "2026-03-28T13:15:20.157Z",
+          "node": "NODE-B",
+          "prevHash": "GENESIS",
+          "hash": "73b5a0f2",
+          "status": "queued"
+        }
+      ]
+    }
+  },
+  {
+    "id": "BND-MNACRT1H-C7E3",
+    "receivedAt": "2026-03-28T13:15:18.341Z",
+    "nodeId": "NODE-A",
+    "headHash": "d40ac214",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T13:15:18.314Z",
+    "signature": null,
+    "signer": null,
+    "publish": {
+      "provider": "local-publisher",
+      "mode": "deterministic-mock",
+      "cid": "bafy721dc7b8b76dd6538ac68b426601e89ff19d7a9de9e7",
+      "pinned": false,
+      "recordedAt": "2026-03-28T13:15:18.342Z"
+    },
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T13:15:18.314Z",
+      "nodeId": "NODE-A",
+      "previousAnchor": "NONE",
+      "headHash": "d40ac214",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-A1",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone A2 flood rescue",
+            "zone": "A2"
+          },
+          "ts": "2026-03-28T13:15:18.313Z",
+          "node": "NODE-A",
+          "prevHash": "GENESIS",
+          "hash": "d40ac214",
+          "status": "queued"
+        }
+      ]
+    }
+  },
+  {
+    "id": "BND-MNACK2N0-A1DB",
+    "receivedAt": "2026-03-28T13:09:17.532Z",
+    "nodeId": "NODE-TEST",
+    "headHash": "2c4d6f60",
+    "previousAnchor": "NONE",
+    "eventCount": 1,
+    "schema": "disasternet.sync.bundle.v1",
+    "generatedAt": "2026-03-28T13:09:17.509Z",
+    "bundle": {
+      "schema": "disasternet.sync.bundle.v1",
+      "generatedAt": "2026-03-28T13:09:17.509Z",
+      "nodeId": "NODE-TEST",
+      "previousAnchor": "NONE",
+      "headHash": "2c4d6f60",
+      "eventCount": 1,
+      "events": [
+        {
+          "id": "EVT-TEST-1",
+          "type": "field_report_logged",
+          "payload": {
+            "text": "Zone C3 oxygen emergency",
+            "zone": "C3"
+          },
+          "ts": "2026-03-28T13:09:17.507Z",
+          "node": "NODE-TEST",
+          "prevHash": "GENESIS",
+          "hash": "2c4d6f60",
+          "status": "queued"
+        }
+      ]
+    }
+  }
+]
