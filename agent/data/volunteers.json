@@ -1,0 +1,18 @@
+[
+  {
+    "nodeId": "NODE-FRONTEND-COMPAT",
+    "nearId": "frontend_compat.near",
+    "worldLevel": "DEV-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA+4ZokU+qnlqk/hyFMq2/xAHr8OuX5VrotYBYSDHbSmU=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-28T14:31:25.200Z",
+    "updatedAt": "2026-03-28T14:31:25.200Z"
+  },
+  {
+    "nodeId": "NODE-SIGNED",
+    "nearId": "rescue_signed.near",
+    "worldLevel": "ORB-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwNacFw7TEuTC7SXKiPj0Tl4Pu2sG6OnnncacvLCHvbI=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-28T13:17:16.243Z",
+    "updatedAt": "2026-03-28T13:17:16.243Z"
+  }
+]
