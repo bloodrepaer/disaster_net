@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DisasterNet Family Status Search</title>
+<style>
+:root {
+  --bg: #060d16;
+  --surface: #0b1522;
+  --border: #1b2e46;
+  --accent: #00d4ff;
+  --text: #c8e0f0;
+  --text2: #7fa0ba;
+  --warn: #ffcc00;
+  --danger: #ff1744;
+  --ok: #00c851;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: radial-gradient(circle at 10% 0%, rgba(0,212,255,0.12), transparent 42%), var(--bg);
+  color: var(--text);
+}
+.wrap {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 18px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.small { color: var(--text2); font-size: 13px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input, button {
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: #06101a;
+  color: var(--text);
+  padding: 10px 12px;
+}
+input { flex: 1; min-width: 220px; }
+button { cursor: pointer; background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.35); }
+button:hover { background: rgba(0,212,255,0.2); }
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid;
+}
+.badge.Missing { color: var(--danger); border-color: var(--danger); }
+.badge.Located { color: var(--accent); border-color: var(--accent); }
+.badge.Displaced { color: var(--warn); border-color: var(--warn); }
+.badge.Hospitalised { color: #ff8a4a; border-color: #ff8a4a; }
+.badge.Deceased { color: #99a4b0; border-color: #99a4b0; }
+.result {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.01);
+}
+.result-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.result-meta { margin-top: 6px; color: var(--text2); font-size: 13px; }
+.hidden { display: none; }
+.note { color: var(--warn); font-size: 12px; margin-top: 6px; }
+.kv { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--text2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Family Status Search</h1>
+    <div class="small">Search by name or phone. Public results only show status, last seen zone, and last update time.</div>
+    <div class="row" style="margin-top:10px">
+      <input id="q" placeholder="Name or phone number" />
+      <button onclick="searchPersons()">Search</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultsCard">
+    <div id="results"></div>
+  </div>
+
+  <div class="card hidden" id="claimCard">
+    <h3 style="margin-top:0">OTP Family Claim</h3>
+    <div class="small" id="claimTarget"></div>
+    <div class="row" style="margin-top:10px">
+      <input id="claimPhone" placeholder="Registered family phone" />
+      <button onclick="requestOtp()">Request OTP</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="claimOtp" placeholder="Enter OTP" />
+      <button onclick="verifyOtp()">Verify OTP</button>
+    </div>
+    <div class="note" id="otpNote"></div>
+    <div class="kv" id="claimDetails"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8787';
+let selectedPersonId = null;
+let otpCooldownUntil = 0;
+let otpCountdownTimer = null;
+
+function safeText(v) {
+  return String(v || '').replace(/[<>&"]/g, (ch) => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[ch]));
+}
+
+async function searchPersons() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  const res = await fetch(`${API}/api/v1/family/search?query=${encodeURIComponent(q)}`);
+  const data = await res.json();
+
+  const container = document.getElementById('results');
+  document.getElementById('resultsCard').classList.remove('hidden');
+
+  if (!data.ok || !data.results || !data.results.length) {
+    container.innerHTML = '<div class="small">No matching records found.</div>';
+    return;
+  }
+
+  container.innerHTML = data.results.map((r) => {
+    return `<div class="result">
+      <div class="result-top">
+        <strong>${safeText(r.name)}</strong>
+        <span class="badge ${safeText(r.status)}">${safeText(r.status)}</span>
+      </div>
+      <div class="result-meta">Last seen zone: <strong>${safeText(r.lastSeenZone)}</strong> · Last update: <strong>${new Date(r.lastUpdatedAt).toLocaleString()}</strong></div>
+      <div style="margin-top:8px"><button onclick="openClaim('${safeText(r.id)}','${safeText(r.name)}')">Claim Detailed Record (OTP)</button></div>
+    </div>`;
+  }).join('');
+}
+
+function openClaim(personId, personName) {
+  selectedPersonId = personId;
+  document.getElementById('claimCard').classList.remove('hidden');
+  document.getElementById('claimTarget').textContent = `Selected: ${personName} (${personId})`;
+  document.getElementById('otpNote').textContent = '';
+  document.getElementById('claimDetails').textContent = '';
+}
+
+function setOtpNote(message, isError = false) {
+  const noteEl = document.getElementById('otpNote');
+  noteEl.style.color = isError ? 'var(--danger)' : 'var(--warn)';
+  noteEl.textContent = message;
+}
+
+function setOtpButtonsEnabled(enabled) {
+  const reqBtn = document.querySelector('#claimCard button[onclick="requestOtp()"]');
+  const verifyBtn = document.querySelector('#claimCard button[onclick="verifyOtp()"]');
+  if (reqBtn) reqBtn.disabled = !enabled;
+  if (verifyBtn) verifyBtn.disabled = !enabled;
+}
+
+function startOtpCooldown(seconds) {
+  otpCooldownUntil = Date.now() + Math.max(0, Number(seconds || 0)) * 1000;
+  if (otpCountdownTimer) clearInterval(otpCountdownTimer);
+  setOtpButtonsEnabled(false);
+
+  otpCountdownTimer = setInterval(() => {
+    const remaining = Math.max(0, Math.ceil((otpCooldownUntil - Date.now()) / 1000));
+    if (remaining <= 0) {
+      clearInterval(otpCountdownTimer);
+      otpCountdownTimer = null;
+      setOtpButtonsEnabled(true);
+      setOtpNote('You can now request a fresh OTP.');
+      return;
+    }
+    setOtpNote(`OTP already issued. Wait ${remaining}s before requesting again.`);
+  }, 1000);
+}
+
+async function requestOtp() {
+  if (!selectedPersonId) return;
+  const phone = document.getElementById('claimPhone').value.trim();
+  if (!phone) return;
+
+  if (Date.now() < otpCooldownUntil) {
+    const wait = Math.ceil((otpCooldownUntil - Date.now()) / 1000);
+    setOtpNote(`Please wait ${wait}s before requesting another OTP.`, true);
+    return;
+  }
+
+  const res = await fetch(`${API}/api/v1/persons/${selectedPersonId}/family/request-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    if (res.status === 429 && data.waitSeconds) {
+      startOtpCooldown(data.waitSeconds);
+      return;
+    }
+    setOtpNote(data.message || 'OTP request failed', true);
+    return;
+  }
+  setOtpNote(`OTP sent. Demo OTP: ${data.demoOtp}. Expires in ${data.expiresInSeconds || 300}s.`);
+  startOtpCooldown(data.expiresInSeconds || 300);
+}
+
+async function verifyOtp() {
+  if (!selectedPersonId) return;
+  const phone = document.getElementById('claimPhone').value.trim();
+  const otp = document.getElementById('claimOtp').value.trim();
+
+  const res = await fetch(`${API}/api/v1/persons/${selectedPersonId}/family/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, otp }),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    if (typeof data.remainingAttempts === 'number') {
+      setOtpNote(`${data.message || 'OTP verification failed'} (attempts left: ${data.remainingAttempts})`, true);
+      return;
+    }
+    setOtpNote(data.message || 'OTP verification failed', true);
+    return;
+  }
+
+  const p = data.person;
+  document.getElementById('claimDetails').innerHTML = `
+    <div><strong>Status:</strong> ${safeText(p.status)}</div>
+    <div><strong>Last seen zone:</strong> ${safeText(p.lastSeenZone)}</div>
+    <div><strong>Contact:</strong> ${safeText(p.phone || 'N/A')}</div>
+    <div><strong>Notes:</strong> ${safeText(p.note || 'N/A')}</div>
+    <div><strong>Anchor CID:</strong> ${safeText(p.anchorCid || 'N/A')}</div>
+    <div><strong>Compensation:</strong> ${p.compensation ? `${safeText(p.compensation.amount)} · TX ${safeText(p.compensation.txHash)}` : 'Not processed'}</div>
+  `;
+  if (otpCountdownTimer) {
+    clearInterval(otpCountdownTimer);
+    otpCountdownTimer = null;
+  }
+  setOtpButtonsEnabled(true);
+  setOtpNote('OTP verified. Detailed records unlocked.');
+}
+</script>
+</body>
+</html>

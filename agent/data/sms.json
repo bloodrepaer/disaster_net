@@ -1,0 +1,27 @@
+[
+  {
+    "id": "SMS-MNBXYETZ-E8D7",
+    "personId": "PRS-MNBXYET1-C72E",
+    "phone": "9991113333",
+    "type": "OTP",
+    "message": "DisasterNet OTP for Cooldown Test: 675839",
+    "sentAt": "2026-03-29T15:56:04.631Z"
+  },
+  {
+    "id": "SMS-MNBWV1B3-FEFF",
+    "personId": "PRS-MNBWV1AQ-3193",
+    "phone": "9990002222",
+    "type": "COMPENSATION_PROOF",
+    "message": "DisasterNet update: compensation processed for Anchor Person. Tx hash: 0x21db64ee139bd967b2b4c44c130554a3fa08a605653371c2e1630fb849968526",
+    "txHash": "0x21db64ee139bd967b2b4c44c130554a3fa08a605653371c2e1630fb849968526",
+    "sentAt": "2026-03-29T15:25:27.519Z"
+  },
+  {
+    "id": "SMS-MNBWURAI-2E4D",
+    "personId": "PRS-MNBWURA1-56B6",
+    "phone": "9990001111",
+    "type": "OTP",
+    "message": "DisasterNet OTP for Test Person: 187604",
+    "sentAt": "2026-03-29T15:25:14.538Z"
+  }
+]

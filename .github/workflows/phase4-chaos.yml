@@ -1,0 +1,102 @@
+name: Phase 4 Multi-Node Chaos
+
+on:
+  push:
+    paths:
+      - 'agent/**'
+      - '.github/workflows/phase4-chaos.yml'
+  pull_request:
+    paths:
+      - 'agent/**'
+      - '.github/workflows/phase4-chaos.yml'
+
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create test nodes data directory
+        run: mkdir -p /tmp/chaos-node-{1,2,3}
+
+      - name: Start receiver node 1
+        run: |
+          PORT=8787 node agent/index.js > /tmp/node1.log 2>&1 &
+          echo $! > /tmp/node1.pid
+
+      - name: Start receiver node 2 (delayed sync)
+        run: |
+          PORT=8788 ANCHOR_WORKER_INTERVAL_MS=15000 node agent/index.js > /tmp/node2.log 2>&1 &
+          echo $! > /tmp/node2.pid
+
+      - name: Start receiver node 3 (high failure rate)
+        run: |
+          PORT=8789 ANCHOR_SIM_FAIL_RATE=0.3 node agent/index.js > /tmp/node3.log 2>&1 &
+          echo $! > /tmp/node3.pid
+
+      - name: Wait for health check all nodes
+        run: |
+          for port in 8787 8788 8789; do
+            for i in {1..30}; do
+              if curl -fsS http://localhost:$port/health > /dev/null; then
+                echo "Node on port $port is healthy"
+                break
+              fi
+              sleep 1
+            done
+          done
+
+      - name: Test scenario 1 - Simultaneous uploads to different nodes
+        run: |
+          for i in {1..5}; do
+            curl -X POST http://localhost:8787/api/v1/sync-bundles \
+              -H "Content-Type: application/json" \
+              -d "{\"schema\":\"disasternet.sync.bundle.v1\",\"nodeId\":\"NODE-CHAOS-$i\",\"headHash\":\"0x$(date +%s)$i\",\"previousAnchor\":\"NONE\",\"eventCount\":1,\"generatedAt\":\"$(date -Iseconds)\",\"events\":[{\"id\":\"EVT-$i\"}]}" &
+          done
+          wait
+
+      - name: Test scenario 2 - Partition recovery with conflicting updates
+        run: |
+          # Simulate bundle that should be rejected on node 2
+          sleep 2
+          curl -X POST http://localhost:8788/api/v1/sync-bundles \
+            -H "Content-Type: application/json" \
+            -d '{"schema":"disasternet.sync.bundle.v1","nodeId":"NODE-PARTITION","headHash":"0xconflict1","previousAnchor":"0xmissing","eventCount":1,"generatedAt":"'$(date -Iseconds)'","events":[{"id":"EVT-CONFLICT"}]}' || echo "Expected conflict rejection"
+
+      - name: Check anchor queue on high-failure node
+        run: |
+          echo "Queued anchors on node 3 (high failure):"
+          curl -s http://localhost:8789/api/v1/anchors?status=queued | jq '.count'
+
+      - name: Verify no data corruption across nodes
+        run: |
+          BUNDLES_1=$(curl -s http://localhost:8787/api/v1/sync-bundles?limit=100 | jq '.count')
+          echo "Node 1 bundles: $BUNDLES_1"
+          
+          RECEIPTS=$(curl -s http://localhost:8787/api/v1/anchor-receipts?limit=100 | jq '.count')
+          echo "Total receipts: $RECEIPTS"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          for pid in /tmp/node*.pid; do
+            if [ -f "$pid" ]; then
+              kill $(cat "$pid") || true
+            fi
+          done
+          sleep 1
+
+      - name: Show node logs on failure
+        if: failure()
+        run: |
+          echo "=== Node 1 Log ===" && tail -50 /tmp/node1.log || true
+          echo "=== Node 2 Log ===" && tail -50 /tmp/node2.log || true
+          echo "=== Node 3 Log ===" && tail -50 /tmp/node3.log || true

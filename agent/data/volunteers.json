@@ -1,0 +1,34 @@
+[
+  {
+    "nodeId": "NODE-SIG-MNBYOJIT",
+    "nearId": "node-sig-mnbyojit.near",
+    "worldLevel": "ORB-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAkMoHKHpSDTqWICMOBLCu/O9Xo0EmHOz0rqYWqTV9lOU=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-29T16:16:23.769Z",
+    "updatedAt": "2026-03-29T16:16:23.769Z"
+  },
+  {
+    "nodeId": "NODE-SIG-MNBYH9WU",
+    "nearId": "node-sig-mnbyh9wu.near",
+    "worldLevel": "ORB-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA/s103x89hoT6R0qYdgepK+TBJlrE3Edhab2jpPWmHq0=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-29T16:10:44.738Z",
+    "updatedAt": "2026-03-29T16:10:44.738Z"
+  },
+  {
+    "nodeId": "NODE-FRONTEND-COMPAT",
+    "nearId": "frontend_compat.near",
+    "worldLevel": "DEV-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA+4ZokU+qnlqk/hyFMq2/xAHr8OuX5VrotYBYSDHbSmU=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-28T14:31:25.200Z",
+    "updatedAt": "2026-03-28T14:31:25.200Z"
+  },
+  {
+    "nodeId": "NODE-SIGNED",
+    "nearId": "rescue_signed.near",
+    "worldLevel": "ORB-VERIFIED",
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwNacFw7TEuTC7SXKiPj0Tl4Pu2sG6OnnncacvLCHvbI=\n-----END PUBLIC KEY-----\n",
+    "createdAt": "2026-03-28T13:17:16.243Z",
+    "updatedAt": "2026-03-28T13:17:16.243Z"
+  }
+]

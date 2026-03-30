@@ -1,0 +1,56 @@
+name: Phase 3 Failure Harness
+
+on:
+  push:
+    paths:
+      - 'agent/**'
+      - '.github/workflows/phase3-harness.yml'
+  pull_request:
+    paths:
+      - 'agent/**'
+      - '.github/workflows/phase3-harness.yml'
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Start receiver
+        run: |
+          node agent/index.js > receiver.log 2>&1 &
+          echo $! > receiver.pid
+
+      - name: Wait for health endpoint
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8787/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Receiver did not become healthy in time"
+          cat receiver.log || true
+          exit 1
+
+      - name: Run failure harness
+        run: node agent/failure_harness.js
+
+      - name: Show receiver log on failure
+        if: failure()
+        run: cat receiver.log || true
+
+      - name: Stop receiver
+        if: always()
+        run: |
+          if [ -f receiver.pid ]; then
+            kill $(cat receiver.pid) || true
+          fi

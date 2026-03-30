@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DisasterNet — Project Pitch</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06090f;
+  --fg: #e8eef8;
+  --fg2: #7a8fa8;
+  --fg3: #3a4a5c;
+  --accent: #ff4500;
+  --accent2: #00c8ff;
+  --accent3: #39ff14;
+  --purple: #9b7dff;
+  --card: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.14);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Syne', sans-serif;
+  overflow-x: hidden;
+}
+
+/* NOISE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+mono { font-family: 'DM Mono', monospace; }
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-glow {
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,69,0,0.12) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+
+.hero-glow2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%);
+  top: 30%;
+  left: 60%;
+  pointer-events: none;
+}
+
+.hackathon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,69,0,0.4);
+  border-radius: 2px;
+  padding: 6px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  margin-bottom: 36px;
+  background: rgba(255,69,0,0.06);
+}
+
+.blink { animation: blink 1.4s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.2} }
+
+h1 {
+  font-size: clamp(52px, 9vw, 110px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -3px;
+  margin-bottom: 28px;
+}
+
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+h1 .net {
+  color: var(--accent2);
+}
+
+.tagline {
+  font-size: clamp(15px, 2vw, 20px);
+  color: var(--fg2);
+  max-width: 580px;
+  line-height: 1.7;
+  margin-bottom: 52px;
+  font-weight: 400;
+}
+
+.cta-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--accent);
+  color: white;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(255,69,0,0.35);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border: 1px solid var(--border2);
+  color: var(--fg2);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+
+/* SCROLL INDICATOR */
+.scroll-hint {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--fg3);
+  animation: float 2s ease-in-out infinite;
+}
+
+@keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)} }
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--fg3), transparent);
+}
+
+/* SECTION */
+section {
+  padding: 100px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  margin-bottom: 20px;
+}
+
+.lead {
+  font-size: 18px;
+  color: var(--fg2);
+  line-height: 1.7;
+  max-width: 640px;
+  margin-bottom: 52px;
+}
+
+/* PROBLEM CARDS */
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 80px;
+}
+
+.prob-card {
+  background: var(--bg);
+  padding: 32px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.prob-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s ease;
+}
+
+.prob-card:hover::before { transform: scaleX(1); }
+
+.prob-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 36px;
+  font-weight: 300;
+  color: var(--accent);
+  opacity: 0.3;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.prob-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.prob-desc {
+  font-size: 13px;
+  color: var(--fg2);
+  line-height: 1.6;
+}
+
+/* SOLUTION ROWS */
+.solution-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  margin-bottom: 80px;
+  padding-bottom: 80px;
+  border-bottom: 1px solid var(--border);
+}
+
+.solution-row:last-child { border-bottom: none; margin-bottom: 0; }
+
+.solution-row.flip { direction: rtl; }
+.solution-row.flip > * { direction: ltr; }
+
+.sol-tag {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+
+.sol-tag.ai { background: rgba(255,69,0,0.12); color: var(--accent); border: 1px solid rgba(255,69,0,0.3); }
+.sol-tag.mesh { background: rgba(0,200,255,0.08); color: var(--accent2); border: 1px solid rgba(0,200,255,0.25); }
+.sol-tag.fhe { background: rgba(155,125,255,0.08); color: var(--purple); border: 1px solid rgba(155,125,255,0.25); }
+.sol-tag.chain { background: rgba(57,255,20,0.06); color: var(--accent3); border: 1px solid rgba(57,255,20,0.2); }
+
+.sol-title {
+  font-size: clamp(20px, 3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.sol-desc {
+  font-size: 15px;
+  color: var(--fg2);
+  line-height: 1.75;
+}
+
+/* TERMINAL MOCK */
+.terminal {
+  background: #030608;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+
+.t-dot { width: 10px; height: 10px; border-radius: 50%; }
+.t-r { background: #ff5f57; }
+.t-y { background: #ffbd2e; }
+.t-g { background: #28c840; }
+
+.terminal-body {
+  padding: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: var(--fg2);
+}
+
+.terminal-body .prompt { color: var(--accent3); }
+.terminal-body .cmd { color: var(--fg); }
+.terminal-body .out { color: var(--fg2); }
+.terminal-body .key { color: var(--accent2); }
+.terminal-body .val { color: var(--purple); }
+.terminal-body .hi { color: var(--accent3); }
+.terminal-body .warn { color: #ffcc00; }
+
+/* MESH VISUAL */
+.mesh-visual {
+  position: relative;
+  height: 200px;
+  background: rgba(0,200,255,0.02);
+  border: 1px solid rgba(0,200,255,0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mesh-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.node-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  position: relative;
+}
+
+.node-circle::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid;
+  border-color: inherit;
+  opacity: 0.2;
+  animation: ripple 2s ease-out infinite;
+}
+
+@keyframes ripple { 0%{opacity:0.3;transform:scale(1)}100%{opacity:0;transform:scale(1.6)} }
+
+.node-me { border-color: var(--accent2); background: rgba(0,200,255,0.08); }
+.node-peer { border-color: var(--accent3); background: rgba(57,255,20,0.06); animation-delay: 0.5s; }
+.node-offline { border-color: var(--fg3); background: transparent; }
+
+.node-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--fg3);
+  text-align: center;
+}
+
+.mesh-line {
+  position: absolute;
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--accent2), var(--accent3));
+  opacity: 0.3;
+  animation: pulse-line 2s ease-in-out infinite;
+}
+
+@keyframes pulse-line { 0%,100%{opacity:0.15}50%{opacity:0.5} }
+
+/* FHE VISUAL */
+.fhe-visual {
+  background: rgba(155,125,255,0.04);
+  border: 1px solid rgba(155,125,255,0.15);
+  border-radius: 6px;
+  padding: 24px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  line-height: 2;
+}
+
+.fhe-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.fhe-label { color: var(--fg3); width: 80px; flex-shrink: 0; }
+.fhe-val { color: var(--purple); word-break: break-all; }
+.fhe-arrow { color: var(--fg3); }
+
+/* SPONSORS */
+.sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.sponsor-cell {
+  background: var(--bg);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.sponsor-cell:hover { background: var(--card); }
+
+.sponsor-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sponsor-track {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.track-ai { background: rgba(255,69,0,0.1); color: var(--accent); }
+.track-privacy { background: rgba(155,125,255,0.1); color: var(--purple); }
+.track-infra { background: rgba(0,200,255,0.08); color: var(--accent2); }
+.track-commons { background: rgba(57,255,20,0.06); color: var(--accent3); }
+
+.sponsor-desc {
+  font-size: 12px;
+  color: var(--fg3);
+  line-height: 1.5;
+}
+
+/* STATS ROW */
+.stats-band {
+  background: rgba(255,255,255,0.02);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 40px 24px;
+}
+
+.stats-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.stat {
+  text-align: center;
+  padding: 0 20px;
+  border-right: 1px solid var(--border);
+}
+
+.stat:last-child { border-right: none; }
+
+.stat-val {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-val.orange { color: var(--accent); }
+.stat-val.cyan { color: var(--accent2); }
+.stat-val.green { color: var(--accent3); }
+.stat-val.purple { color: var(--purple); }
+
+.stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--fg3);
+}
+
+/* TRACKS */
+.tracks-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 60px;
+}
+
+.track-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.track-card:hover { border-color: var(--border2); }
+
+.track-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.track-card.commons::after { background: var(--accent3); }
+.track-card.privacy::after { background: var(--purple); }
+.track-card.ai::after { background: var(--accent); }
+.track-card.infra::after { background: var(--accent2); }
+
+.track-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.track-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.track-body {
+  font-size: 13px;
+  color: var(--fg2);
+  line-height: 1.6;
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 24px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--fg3);
+  letter-spacing: 1px;
+}
+
+/* DIVIDER */
+.divider {
+  height: 1px;
+  background: var(--border);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .solution-row { grid-template-columns: 1fr; }
+  .solution-row.flip { direction: ltr; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr); }
+  .tracks-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+
+  <div class="hackathon-badge">
+    <span class="blink">●</span>
+    ETH GLOBAL HACKATHON — 72H BUILD
+  </div>
+
+  <h1>
+    Disaster<em>Net</em>
+  </h1>
+
+  <p class="tagline">
+    Offline-first disaster relief coordination. AI triage. FHE-encrypted medical records.
+    On-chain accountability. Works when everything else fails.
+  </p>
+
+  <div class="cta-row">
+    <a href="../index.html" class="btn-primary">⚡ LIVE DEMO</a>
+    <a href="https://github.com" class="btn-ghost">↗ GITHUB REPO</a>
+  </div>
+
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    SCROLL
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-band">
+  <div class="stats-inner">
+    <div class="stat">
+      <div class="stat-val orange">9</div>
+      <div class="stat-label">SPONSOR INTEGRATIONS</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val cyan">4</div>
+      <div class="stat-label">HACKATHON TRACKS</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val green">0</div>
+      <div class="stat-label">INTERNET REQUIRED</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val purple">72H</div>
+      <div class="stat-label">BUILD TIME</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section>
+  <div class="section-label">THE PROBLEM</div>
+  <h2>When disaster hits,<br>four things break.</h2>
+  <p class="lead">Relief organizations arrive to find the same four failures every single time. DisasterNet was designed from the ground up to solve all of them — including the internet going down first.</p>
+
+  <div class="problem-grid">
+    <div class="prob-card">
+      <div class="prob-num">01</div>
+      <div class="prob-title">No coordination</div>
+      <div class="prob-desc">Rescue teams operate in silos. No one has a live picture of which zones are critical, which convoys are blocked, which hospitals are overflowing.</div>
+    </div>
+    <div class="prob-card">
+      <div class="prob-num">02</div>
+      <div class="prob-title">Aid is stolen</div>
+      <div class="prob-desc">₹100Cr donated, ₹40Cr reaches victims. Corrupt middlemen intercept funds. NGOs can't prove where money went. Donors stop donating.</div>
+    </div>
+    <div class="prob-card">
+      <div class="prob-num">03</div>
+      <div class="prob-title">Privacy is shredded</div>
+      <div class="prob-desc">Medical data for 10,000 displaced people shared over WhatsApp groups. Unencrypted. Permanent. No way to audit who saw what or why.</div>
+    </div>
+    <div class="prob-card">
+      <div class="prob-num">04</div>
+      <div class="prob-title">Internet is gone</div>
+      <div class="prob-desc">Cell towers go down in the first 6 hours. Every centralized relief app becomes a brick exactly when it's needed most.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SOLUTIONS -->
+<section>
+  <div class="section-label">THE SOLUTION</div>
+  <h2>Four solutions,<br>one system.</h2>
+
+  <!-- SOLUTION 1: AI Triage -->
+  <div class="solution-row">
+    <div>
+      <div class="sol-tag ai">IMPULSE AI · ANTHROPIC CLAUDE</div>
+      <div class="sol-title">An AI triage agent that thinks in real time</div>
+      <p class="sol-desc">
+        Rescue workers submit field reports in plain language.
+        Impulse AI — powered by Claude — reads them and instantly issues
+        specific routing decisions: which convoy goes where, which zone
+        is critical, which hospital needs oxygen now.<br><br>
+        Every decision is logged with an IPFS content hash. Immutable, provable, permanent.
+      </p>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="t-dot t-r"></div>
+        <div class="t-dot t-y"></div>
+        <div class="t-dot t-g"></div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">FIELD ›</span> <span class="cmd">Zone C3 Raigad — oxygen tanks empty, 8 critical patients</span></div>
+        <br>
+        <div><span class="warn">PROCESSING...</span></div>
+        <br>
+        <div><span class="hi">⚡ DECISION:</span> <span class="out">Medical emergency escalated.</span></div>
+        <div class="out">Helicopter 2 → Zone C3 immediately.</div>
+        <div class="out">FHE data share: C3 → Nashik Medical Hub</div>
+        <div class="out">via Lit Protocol key gate.</div>
+        <div class="out">3 field medics reassigned from Zone F2.</div>
+        <div><span class="key">IPFS:</span> <span class="val">QmXf8a2b...c3d9</span></div>
+        <div><span class="key">HYPERCERT:</span> <span class="val">HC-4F2A1B queued for team</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOLUTION 2: Mesh -->
+  <div class="solution-row flip">
+    <div>
+      <div class="sol-tag mesh">OFFLINE MESH · BROADCASTCHANNEL API</div>
+      <div class="sol-title">Works when the internet dies</div>
+      <p class="sol-desc">
+        Rescue workers on different devices — same wifi or not — form a
+        decentralized mesh using the BroadcastChannel API.
+        Field reports, missing persons, and AI decisions sync across
+        all devices with zero internet, zero servers, zero infrastructure.<br><br>
+        Open the app in two tabs right now. Ping one. Watch the other respond instantly.
+      </p>
+    </div>
+    <div class="mesh-visual">
+      <!-- Nodes positioned via inline style -->
+      <div class="mesh-node" style="top:50%;left:15%;transform:translate(-50%,-50%)">
+        <div class="node-circle node-me">📱</div>
+        <div class="node-label">THIS DEVICE<br>NODE-A</div>
+      </div>
+      <div class="mesh-node" style="top:25%;left:50%;transform:translate(-50%,-50%)">
+        <div class="node-circle node-peer">📱</div>
+        <div class="node-label">PEER-02<br>ACTIVE</div>
+      </div>
+      <div class="mesh-node" style="top:75%;left:50%;transform:translate(-50%,-50%)">
+        <div class="node-circle node-peer">📱</div>
+        <div class="node-label">PEER-03<br>SYNCING</div>
+      </div>
+      <div class="mesh-node" style="top:50%;left:82%;transform:translate(-50%,-50%)">
+        <div class="node-circle node-offline">📱</div>
+        <div class="node-label">NODE-04<br>OFFLINE</div>
+      </div>
+      <!-- Lines (approximate positions) -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 400 200">
+        <line x1="60" y1="100" x2="200" y2="50" stroke="#00c8ff" stroke-width="1" stroke-dasharray="4 4" opacity="0.3"/>
+        <line x1="60" y1="100" x2="200" y2="150" stroke="#00c8ff" stroke-width="1" stroke-dasharray="4 4" opacity="0.3"/>
+        <line x1="200" y1="50" x2="328" y2="100" stroke="#3a4a5c" stroke-width="1" stroke-dasharray="3 6" opacity="0.2"/>
+        <line x1="200" y1="150" x2="328" y2="100" stroke="#3a4a5c" stroke-width="1" stroke-dasharray="3 6" opacity="0.2"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- SOLUTION 3: FHE -->
+  <div class="solution-row">
+    <div>
+      <div class="sol-tag fhe">ZAMA TFHE · LIT PROTOCOL</div>
+      <div class="sol-title">Medical data that's private even from us</div>
+      <p class="sol-desc">
+        Missing persons and medical records are encrypted with Fully Homomorphic
+        Encryption — Zama TFHE — before they ever leave the device.
+        The encrypted ciphertext is what gets broadcast to the mesh.<br><br>
+        Only physicians with a verified credential can decrypt via Lit Protocol
+        key gate. Not the platform. Not the volunteers. Not the government.
+        The math enforces the privacy, not a promise.
+      </p>
+    </div>
+    <div class="fhe-visual">
+      <div class="fhe-row">
+        <span class="fhe-label">PLAINTEXT</span>
+        <span class="fhe-arrow">→</span>
+        <span class="fhe-val" style="color:#e8eef8">Ravi Sharma, 67, Zone A2, hypertensive crisis</span>
+      </div>
+      <div class="fhe-row">
+        <span class="fhe-label">FHE KEY</span>
+        <span class="fhe-arrow">+</span>
+        <span class="fhe-val">Zama TFHE · 128-bit</span>
+      </div>
+      <div class="fhe-row">
+        <span class="fhe-label">CIPHERTEXT</span>
+        <span class="fhe-arrow">→</span>
+        <span class="fhe-val">a3f8c2d1...9e4b7a0f [+1,024 bytes]</span>
+      </div>
+      <div class="fhe-row">
+        <span class="fhe-label">IPFS CID</span>
+        <span class="fhe-arrow">→</span>
+        <span class="fhe-val">QmXf8a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9</span>
+      </div>
+      <div class="fhe-row">
+        <span class="fhe-label">LIT GATE</span>
+        <span class="fhe-arrow">→</span>
+        <span class="fhe-val" style="color:#39ff14">PHYSICIAN_CREDENTIAL_REQUIRED</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOLUTION 4: On-chain -->
+  <div class="solution-row flip">
+    <div>
+      <div class="sol-tag chain">STARKNET · NEAR · HYPERCERTS</div>
+      <div class="sol-title">Aid that can't be stolen</div>
+      <p class="sol-desc">
+        Donor funds sit in a Starknet smart contract. They release to NGOs only
+        when field conditions are verified. No middlemen. No discretion.
+        The contract enforces the rules.<br><br>
+        Every volunteer who helps gets a Hypercert — an ERC-8004 on-chain
+        contribution certificate. Their identity is anchored on NEAR Protocol
+        via World ID proof-of-personhood. Permanent, portable proof
+        of humanitarian work.
+      </p>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="t-dot t-r"></div>
+        <div class="t-dot t-y"></div>
+        <div class="t-dot t-g"></div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="key">CONTRACT</span> <span class="val">0x04a7c3f1...9d8e</span></div>
+        <div><span class="key">NETWORK</span>  <span class="out">Starknet · Relief Fund v2.1</span></div>
+        <div><span class="key">TOTAL</span>    <span class="hi">₹2.4Cr VERIFIED</span></div>
+        <br>
+        <div><span class="prompt">DISBURSE ›</span> <span class="cmd">Goonj Foundation ₹42L</span></div>
+        <div><span class="out">Verifying: World ID proof... </span><span class="hi">✓</span></div>
+        <div><span class="out">Verifying: IPFS field CID... </span><span class="hi">✓</span></div>
+        <div><span class="out">Verifying: AI triage hash... </span><span class="hi">✓</span></div>
+        <div><span class="hi">✓ ₹42L released on-chain</span></div>
+        <br>
+        <div><span class="key">HYPERCERT</span> <span class="val">HC-4F2A1B minted → priya_v.near</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TRACKS -->
+<section>
+  <div class="section-label">HACKATHON TRACKS</div>
+  <h2>Four tracks.<br>One unified system.</h2>
+  <p class="lead">DisasterNet doesn't stretch to fit tracks — every track is a load-bearing piece of the architecture.</p>
+
+  <div class="tracks-grid">
+    <div class="track-card commons">
+      <div class="track-icon">🏅</div>
+      <div class="track-name">Funding the Commons</div>
+      <div class="track-body">Hypercerts mint contribution certificates for every verified rescue action. Volunteers accumulate portable proof of humanitarian work. Donors can match contributions on-chain. DisasterNet turns relief work into a public good with verifiable impact accounting.</div>
+    </div>
+    <div class="track-card privacy">
+      <div class="track-icon">🔒</div>
+      <div class="track-name">Privacy</div>
+      <div class="track-body">Zama TFHE encrypts medical records before they leave the device. Lit Protocol enforces physician-only key access. Not even DisasterNet can read the data. The cryptography enforces the privacy — not a terms of service.</div>
+    </div>
+    <div class="track-card ai">
+      <div class="track-icon">⚡</div>
+      <div class="track-name">AI</div>
+      <div class="track-body">Impulse AI is a Claude-powered autonomous triage agent. It reads plain-language field reports and issues specific routing decisions, resource reallocations, and escalation triggers — all with IPFS-backed provenance and Hypercert accountability.</div>
+    </div>
+    <div class="track-card infra">
+      <div class="track-icon">🌐</div>
+      <div class="track-name">Infrastructure</div>
+      <div class="track-body">Offline-first BroadcastChannel mesh. IPFS + Filecoin via Storacha for permanent decentralized storage. Starknet for trustless fund disbursement. NEAR Protocol for identity anchoring. Everything works when the internet doesn't.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SPONSORS -->
+<section>
+  <div class="section-label">SPONSOR INTEGRATIONS</div>
+  <h2>9 sponsors.<br>All load-bearing.</h2>
+  <p class="lead">Every sponsor integration in DisasterNet is a critical component of the system — not a logo on a slide.</p>
+
+  <div class="sponsor-grid">
+    <div class="sponsor-cell">
+      <div class="sponsor-name">Anthropic</div>
+      <div><span class="sponsor-track track-ai">AI</span></div>
+      <div class="sponsor-desc">Impulse AI triage agent — real-time routing decisions from Claude API</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">Zama TFHE</div>
+      <div><span class="sponsor-track track-privacy">PRIVACY</span></div>
+      <div class="sponsor-desc">FHE on all missing person and medical records before broadcast</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">Lit Protocol</div>
+      <div><span class="sponsor-track track-privacy">PRIVACY</span></div>
+      <div class="sponsor-desc">Key-gated decryption — only verified physicians can access patient data</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">World ID</div>
+      <div><span class="sponsor-track track-infra">IDENTITY</span></div>
+      <div class="sponsor-desc">Proof-of-personhood for volunteers — prevents Sybil attacks in aid distribution</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">NEAR Protocol</div>
+      <div><span class="sponsor-track track-infra">INFRA</span></div>
+      <div class="sponsor-desc">On-chain volunteer identity anchor and Hypercert ownership</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">Hypercerts</div>
+      <div><span class="sponsor-track track-commons">COMMONS</span></div>
+      <div class="sponsor-desc">ERC-8004 contribution certificates for every rescue action</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">Starknet</div>
+      <div><span class="sponsor-track track-infra">INFRA</span></div>
+      <div class="sponsor-desc">Smart contract-gated conditional NGO fund disbursement</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">IPFS + Filecoin</div>
+      <div><span class="sponsor-track track-infra">STORAGE</span></div>
+      <div class="sponsor-desc">Permanent decentralized field log storage via Storacha</div>
+    </div>
+    <div class="sponsor-cell">
+      <div class="sponsor-name">ETH Foundation</div>
+      <div><span class="sponsor-track track-infra">INFRA</span></div>
+      <div class="sponsor-desc">EVM compatibility layer for cross-chain fund bridging</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  BUILT IN 72 HOURS · ETH GLOBAL HACKATHON · MIT LICENSE
+</footer>
+
+</body>
+</html>
